@@ -26,7 +26,7 @@ fn main() -> Result<()> {
         game.print_to_console(10, 10, Color::Grey)?;
         print!("Please enter your chosen space: ");
         let _ = stdout.flush();
-        let s: u8 =  match try_read!("{}\n").map_err(|_| GameError::InvalidSpace) {
+        let s: u8 =  match try_read!("{}\r\n").map_err(|_| GameError::InvalidSpace) {
             Ok(v) => v,
             Err(e) => { 
                 print!("{}, please try again!", e);
