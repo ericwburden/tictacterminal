@@ -203,8 +203,12 @@ impl std::fmt::Display for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for row in 0..3usize {
             for col in 0..3usize {
-                let space_number = (row*3 + col + 1) as u32;
-                let space_number_char = char::from_digit(space_number, 10).unwrap_or(' ');
+                let space_number = row*3 + col;
+                let space_number_char = match space_number {
+                    0 => '0', 1 => '1', 2 => '2', 3 => '3',
+                    4 => '4', 5 => '5', 6 => '6', 7 => '7',
+                    8 => '8', _ => ' ',
+                };
                 let value = match self.board[row][col].mark {
                     Some(v) => v.to_char(), 
                     None => space_number_char, 
