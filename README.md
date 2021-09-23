@@ -5,4 +5,10 @@ for best viewing.
 
 ## Installation
 
+### Using Cargo
+
+1. Intall `Rustup`: https://www.rust-lang.org/learn/get-started
+2. `cargo install tictacterminal`
+3. Make sure your `..cargo/bin` folder is in your PATH
+4. Run `tictacterminal` in your terminal
 
