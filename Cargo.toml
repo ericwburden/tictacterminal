@@ -1,5 +1,5 @@
 [package]
-name = "tictactoe"
+name = "tictacterminal"
 version = "1.0.0"
 authors = ["Eric Burden <eric.w.burden@gmail.com>"]
 edition = "2018"
