@@ -6,7 +6,7 @@ edition = "2018"
 license = "MIT"
 description = "Tic Tac Toe, Terminal"
 readme = "README.md"
-repository = "https://github.com/you/grrs"
+repository = "https://github.com/ericwburden/tictactoe"
 keywords = ["game", "demo"]
 categories = ["game"]
 
