@@ -295,7 +295,11 @@ trait ToIndexedCharMatrix {
 impl ToIndexedCharMatrix for CellRepr {
     fn to_indexed_char_matrix(&self, index: u32) -> CharMatrix {
         let mut char_matrix = self.to_char_matrix();
-        char_matrix[0][2] = char::from_digit(index, 10).unwrap();
+        char_matrix[0][2] = match index {
+            0 => '0', 1 => '1', 2 => '2', 3 => '3',
+            4 => '4', 5 => '5', 6 => '6', 7 => '7',
+            8 => '8', _ => ' ',
+        };
         char_matrix
     }
 }
