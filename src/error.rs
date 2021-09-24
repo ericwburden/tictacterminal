@@ -16,7 +16,7 @@ impl std::fmt::Display for GameError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let msg = match self {
             GameError::SpaceOccupied => "Cannot add a move to an already occupied space",
-            GameError::InvalidSpace => "Valid spaces are 1-9",
+            GameError::InvalidSpace => "Valid spaces are 0-8",
         };
         write!(f, "{}", msg)
     }
