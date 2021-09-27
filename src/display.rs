@@ -225,7 +225,7 @@ impl Draw for CharMatrix {
             for (col_idx, col) in row.iter().enumerate() {
                 if col.is_ascii_whitespace() { continue; }
                 let print_col = (col_idx as u16) + term_col;
-                execute!(std::io::stdout(), MoveTo(print_row, print_col), Print(col))?;
+                execute!(std::io::stdout(), MoveTo(print_col, print_row), Print(col))?;
             }
         }
         Ok(())
