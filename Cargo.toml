@@ -1,6 +1,6 @@
 [package]
 name = "tictacterminal"
-version = "1.2.2"
+version = "2.0.0"
 authors = ["Eric Burden <eric.w.burden@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -15,4 +15,3 @@ categories = ["games", "command-line-utilities"]
 [dependencies]
 crossterm = "0.21.0"
 itertools = "0.10.1"
-text_io="0.1.9"
