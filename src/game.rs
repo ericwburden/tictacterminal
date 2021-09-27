@@ -1,9 +1,30 @@
 //! Structs that implement core game functionality, representing the game and
 //! game board.
 
+use crate::display::{
+    BIG_X,
+    BIG_O,
+    BIG_GRID,
+    BIG_PLAYER,
+    BIG_TRY_AGAIN,
+    BIG_WINS,
+    ROW_HEIGHT,
+    COL_WIDTH,
+    Draw,
+    DrawWithColor,
+};
 use crate::error::{GameError, Result};
+
+use crossterm::execute;
+use crossterm::cursor::MoveTo;
+use crossterm::style::{Color, SetForegroundColor, ResetColor};
 use itertools::Itertools; 
 use std::collections::HashMap;
+
+
+//--------------------------------------------------------------------------------------
+//-- Game Status
+//--------------------------------------------------------------------------------------
 
 /// The three possible game states
 /// - Winner: A player has won. Encapsulates the identity of the winner.
@@ -12,16 +33,35 @@ use std::collections::HashMap;
 #[derive(Debug, PartialEq)]
 pub enum GameStatus {
     Winner(Player),
-    Pending,
+    Pending(Player),
     Draw,
 }
 
+impl Draw for GameStatus {
+    fn draw(&self, term_row: u16, term_col: u16) -> crossterm::Result<()> {
+        match self {
+            GameStatus::Winner(player) => {
+                player.draw(term_row, term_col)?;
+                BIG_WINS.draw_with_color(term_row, term_col + 30, Color::DarkGreen)
+            },
+            GameStatus::Pending(player) => {
+                BIG_PLAYER.draw(term_row, term_col)?;
+                player.draw(term_row, term_col + 55)
+            },
+            GameStatus::Draw => {
+                BIG_TRY_AGAIN.draw_with_color(term_row, term_col, Color::DarkRed)
+            },
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------
+//-- Player
+//--------------------------------------------------------------------------------------
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub enum Player {
-    X,
-    O,
-}
+pub enum Player { X, O }
 
 impl Player {
     pub fn toggle(&mut self) {
@@ -48,6 +88,20 @@ impl std::fmt::Display for Player {
     }
 }
 
+impl Draw for Player {
+    fn draw(&self, term_row: u16, term_col: u16) -> crossterm::Result<()> {
+        match self { 
+            Player::X => BIG_X.draw_with_color(term_row, term_col, Color::DarkCyan),
+            Player::O => BIG_O.draw_with_color(term_row, term_col, Color::DarkMagenta),
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------
+//-- Game Space
+//--------------------------------------------------------------------------------------
+
 /// Represents a single space on the game board
 #[derive(Debug)]
 pub struct GameSpace {
@@ -66,6 +120,20 @@ impl GameSpace {
         self.mark
     }
 }
+
+impl Draw for GameSpace {
+    fn draw(&self, term_row: u16, term_col: u16) -> crossterm::Result<()> {
+        let out_row = term_row + (self.row as u16 * ROW_HEIGHT);
+        let out_col = term_col + (self.col as u16 * COL_WIDTH);
+        if let Some(player) = self.mark { return player.draw(out_row, out_col); }
+        Ok(())
+    }
+}
+
+
+//--------------------------------------------------------------------------------------
+//-- Game
+//--------------------------------------------------------------------------------------
 
 /// Represents a Tic Tac Toe game
 #[derive(Debug)]
@@ -103,24 +171,6 @@ impl<'a> Game {
         let mut game = Self::new();
         for mv in moves { game.add_move(*mv)?; }
         Ok(game)
-    }
-
-    /// Add a move by numeric space. Spaces are numbered 1-9 from left to right,
-    /// top to bottom.
-    pub fn play_on_space(&mut self, space: u8) -> Result<()> {
-        match space {
-            0 => self.add_move((0, 0))?,
-            1 => self.add_move((0, 1))?,
-            2 => self.add_move((0, 2))?,
-            3 => self.add_move((1, 0))?,
-            4 => self.add_move((1, 1))?,
-            5 => self.add_move((1, 2))?,
-            6 => self.add_move((2, 0))?,
-            7 => self.add_move((2, 1))?,
-            8 => self.add_move((2, 2))?,
-            _ => return Err(GameError::InvalidSpace)
-        }
-        Ok(())
     }
 
     /// Return the current player
@@ -182,13 +232,10 @@ impl<'a> Game {
     pub fn status(&self) -> GameStatus {
         if let Some(player) = self.get_winner() { return GameStatus::Winner(player) }
         if self.count_occupied_spaces() == 9 { return GameStatus::Draw }
-        GameStatus::Pending
+        GameStatus::Pending(self.player)
     }
 
-    pub fn is_ongoing(&self) -> bool {
-        self.status() == GameStatus::Pending
-    }
-
+    // Return the identity of the winner, if there is one
     pub fn winner(&self) -> Option<Player> {
         if let GameStatus::Winner(winner) = self.status() {
             Some(winner)
@@ -198,29 +245,26 @@ impl<'a> Game {
     }
 }
 
-// Implement Display for the Game, for pretty printing the current state of the board
-impl std::fmt::Display for Game {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        for row in 0..3usize {
-            for col in 0..3usize {
-                let space_number = row*3 + col;
-                let space_number_char = match space_number {
-                    0 => '0', 1 => '1', 2 => '2', 3 => '3',
-                    4 => '4', 5 => '5', 6 => '6', 7 => '7',
-                    8 => '8', _ => ' ',
-                };
-                let value = match self.board[row][col].mark {
-                    Some(v) => v.to_char(), 
-                    None => space_number_char, 
-                };
-                write!(f, " {} ", value)?;
-                if col < 2 { write!(f, "│")?; } else { write!(f, "\n")?; }
-            }
-            if row < 2 { writeln!(f, "───┼───┼───")?; }
-        }
-        writeln!(f, "")
-    }
+impl Draw for Game {
+    fn draw(&self, term_row: u16, term_col: u16) -> crossterm::Result<()> {
+        let mut stdout = std::io::stdout();
+
+        // Print the game grid (#)
+        execute!(stdout, SetForegroundColor(Color::Grey))?;
+        BIG_GRID.draw(term_row, term_col)?;
+
+        // Print out the game spaces
+        for space in self.iter() { space.draw(term_row, term_col)?; }
+
+        // Print a status message to the right of the game grid
+        self.status().draw(term_row, term_col + 104)?;
+
+        // Reset the color and move the cursor underneath the message
+        execute!(stdout, ResetColor, MoveTo(term_col + 104, term_row + 15))?;
+        Ok(())
+    }       
 }
+
 
 //--------------------------------------------------------------------------------------
 //-- Iteration over game board positions, from left to right, top to bottom
@@ -292,7 +336,7 @@ mod tests {
         // the outcome later in the game
         let moves = [(0, 0), (1, 1)];
         let game = Game::from(&moves).expect("Failed to create game.");
-        assert_eq!(game.status(), GameStatus::Pending);
+        assert_eq!(game.status(), GameStatus::Pending(Player::X));
     }
 
     #[test]
@@ -301,7 +345,7 @@ mod tests {
         // change the outcome later in the game
         let moves = [(1, 1), (0, 0), (1, 2), (1, 0), (2, 0), (0, 2)];
         let game = Game::from(&moves).expect("Failed to create game.");
-        assert_eq!(game.status(), GameStatus::Pending);
+        assert_eq!(game.status(), GameStatus::Pending(Player::X));
     }
 
     #[test]
