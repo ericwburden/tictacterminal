@@ -152,7 +152,7 @@ pub(crate) const BIG_TRY_AGAIN: [&'static str; 10] = [
 //-- Structs and traits for displaying the game
 //--------------------------------------------------------------------------------------
 
-pub struct CharMatrix(Vec<Vec<char>>); // Just a Vec<Vec<char>> to attach traits to
+pub(crate) struct CharMatrix(Vec<Vec<char>>); // Just a Vec<Vec<char>> to attach traits to
 
 impl Default for CharMatrix {
     fn default() -> Self {

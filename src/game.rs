@@ -31,7 +31,7 @@ use std::collections::HashMap;
 /// - Pending: The game has not yet concluded.
 /// - Draw: The game has concluded in a draw. No more moves possible.
 #[derive(Debug, PartialEq)]
-pub enum GameStatus {
+pub(crate) enum GameStatus {
     Winner(Player),
     Pending(Player),
     Draw,
@@ -61,21 +61,14 @@ impl Draw for GameStatus {
 //--------------------------------------------------------------------------------------
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub enum Player { X, O }
+pub(crate) enum Player { X, O }
 
 impl Player {
-    pub fn toggle(&mut self) {
+    pub(crate) fn toggle(&mut self) {
         *self = match self {
             Player::X => Player::O,
             Player::O => Player::X
         };
-    }
-
-    pub fn to_char(&self) -> char {
-        match self {
-            Player::X => 'X',
-            Player::O => 'O',
-        }
     }
 }
 
@@ -99,32 +92,70 @@ impl Draw for Player {
 
 
 //--------------------------------------------------------------------------------------
+//-- Game Space Coordinate
+//--------------------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Coordinate {
+    row: usize,
+    col: usize,
+}
+
+impl Coordinate {
+    pub(crate) fn new(row: usize, col: usize) -> Self {
+        Coordinate { row, col }
+    }
+
+    pub(crate) fn get_tuple(&self) -> (usize, usize) {
+        (self.row, self.col)
+    }
+}
+
+impl From<Coordinate> for (usize, usize) {
+    fn from(coord: Coordinate) -> Self {
+        coord.get_tuple()
+    }
+}
+
+impl From<(usize, usize)> for Coordinate {
+    fn from(t: (usize, usize)) -> Self {
+        Coordinate::new(t.0, t.1)
+    }
+}
+
+
+//--------------------------------------------------------------------------------------
 //-- Game Space
 //--------------------------------------------------------------------------------------
 
 /// Represents a single space on the game board
 #[derive(Debug)]
-pub struct GameSpace {
-    pub mark: Option<Player>,     // Corresponds to which player marked that space
-    pub value: u8,                // The 'magic square' value for this space
-    pub row: usize,               // The row containing this space
-    pub col: usize,               // The column containing this space
+pub(crate) struct GameSpace {
+    mark: Option<Player>,     // Corresponds to which player marked that space
+    value: u8,                // The 'magic square' value for this space
+    coordinate: Coordinate,   // The coordinate in the game board containing this space
 }
 
 impl GameSpace {
-    pub fn new(value: u8, row: usize, col: usize) -> Self { 
-        GameSpace { mark: None, value, row, col } 
+    pub(crate) fn new(value: u8, row: usize, col: usize) -> Self { 
+        let coordinate = Coordinate::new(row, col);
+        GameSpace { mark: None, value, coordinate } 
     }
 
-    pub fn get_mark(&self) -> Option<Player> {
+    pub(crate) fn get_mark(&self) -> Option<Player> {
         self.mark
+    }
+
+    pub(crate) fn get_coordinate(&self) -> Coordinate {
+        self.coordinate
     }
 }
 
 impl Draw for GameSpace {
     fn draw(&self, term_row: u16, term_col: u16) -> crossterm::Result<()> {
-        let out_row = term_row + (self.row as u16 * ROW_HEIGHT);
-        let out_col = term_col + (self.col as u16 * COL_WIDTH);
+        let (row, col) = self.coordinate.into();
+        let out_row = term_row + (row as u16 * ROW_HEIGHT);
+        let out_col = term_col + (col as u16 * COL_WIDTH);
         if let Some(player) = self.mark { return player.draw(out_row, out_col); }
         Ok(())
     }
@@ -137,14 +168,14 @@ impl Draw for GameSpace {
 
 /// Represents a Tic Tac Toe game
 #[derive(Debug)]
-pub struct Game {
+pub(crate) struct Game {
     board: [[GameSpace; 3]; 3],  // The game board represented by game spaces
     player: Player               // The current player, Player::X or Player::O
 }
 
 impl<'a> Game {
     /// Create a new, empty game board
-    pub fn new() -> Self { 
+    pub(crate) fn new() -> Self { 
         let board = [
             [GameSpace::new(2, 0, 0), GameSpace::new(7, 0, 1), GameSpace::new(6, 0, 2)],
             [GameSpace::new(9, 1, 0), GameSpace::new(5, 1, 1), GameSpace::new(1, 1, 2)],
@@ -155,11 +186,12 @@ impl<'a> Game {
 
     /// Add a 'move' to the game board, marking a space according to the current player.
     /// Returns an error if the space indicated by 'move' is currently occupied.
-    pub fn add_move(&mut self, mv: (usize, usize)) -> Result<()> {
-        if let Some(_) = self.board[mv.0][mv.1].mark {
+    pub(crate) fn add_move(&mut self, coord: Coordinate) -> Result<()> {
+        let (row, col) = coord.into();
+        if let Some(_) = self.board[row][col].mark {
             Err(GameError::SpaceOccupied)
         } else {
-            self.board[mv.0][mv.1].mark = Some(self.player);
+            self.board[row][col].mark = Some(self.player);
             self.player.toggle();
             Ok(())
         }
@@ -167,36 +199,39 @@ impl<'a> Game {
 
     /// Create a new Game from a series of 'moves'
     /// If any of the moves is invalid (space already occupied), return an error.
-    pub fn from(moves: &[(usize, usize)]) -> Result<Self> {
+    /// Used primarily for testing
+    #[allow(dead_code)]
+    pub(crate) fn from(moves: &[Coordinate]) -> Result<Self> {
         let mut game = Self::new();
         for mv in moves { game.add_move(*mv)?; }
         Ok(game)
     }
 
     /// Return the current player
-    pub fn current_player(&self) -> Player {
+    pub(crate) fn current_player(&self) -> Player {
         self.player
     }
 
     /// Return an iterator that yields references to the individual game spaces, in
     /// order from left to right, top to bottom.
-    pub fn iter(&'a self) -> GameIterator<'a> {
+    pub(crate) fn iter(&'a self) -> GameIterator<'a> {
         GameIterator { game: &self, row: 0, col: 0 }
     }
     
     /// Return a reference to a game space given by its row/col index
-    pub fn get_space(&self, row: usize, col: usize) -> &GameSpace {
-       &self.board[row][col]
+    pub(crate) fn get_space(&self, coord: Coordinate) -> &GameSpace {
+        let (row, col) = coord.into();
+        &self.board[row][col]
     }
 
     /// Return a mapping of player to the values of the spaces occupied by that player.
     /// The values are derived from a 3x3 magic square where each horizontal, vertical,
     /// and diagonal line sums to 15.
-    pub fn get_player_scores(&self) -> HashMap<Player, Vec<u8>> {
+    pub(crate) fn get_player_scores(&self) -> HashMap<Player, Vec<u8>> {
         let mut player_scores = HashMap::new();
         for space in self.iter() {
-            let (row_idx, col_idx) = (space.row, space.col);
-            if let Some(p) = self.board[row_idx][col_idx].mark {
+            let (row, col) = space.coordinate.into();
+            if let Some(p) = self.board[row][col].mark {
                 let scores = player_scores.entry(p).or_insert(Vec::with_capacity(5));
                 scores.push(space.value);
             }
@@ -207,7 +242,7 @@ impl<'a> Game {
     /// Determines the winner of the game, as it stands, if there is one. Returns None
     /// if there is no winner. A winner is declared if any three of the values of the
     /// spaces occupied by that player sum to 15.
-    pub fn get_winner(&self) -> Option<Player> {
+    pub(crate) fn get_winner(&self) -> Option<Player> {
         let player_scores = self.get_player_scores();
         for (player, scores) in player_scores.iter() {
             // Do any unique three-space combinations sum to 15?
@@ -220,7 +255,7 @@ impl<'a> Game {
     }
 
     /// Count the number of occupied spaces on the game board
-    pub fn count_occupied_spaces(&self) -> u8 {
+    pub(crate) fn count_occupied_spaces(&self) -> u8 {
         let mut occupied_spaces = 0;
         for space in self.iter() {
             if space.mark.is_some() { occupied_spaces += 1; }
@@ -229,19 +264,10 @@ impl<'a> Game {
     }
 
     /// Determine and return the current status of the Game, as it currently stands
-    pub fn status(&self) -> GameStatus {
+    pub(crate) fn status(&self) -> GameStatus {
         if let Some(player) = self.get_winner() { return GameStatus::Winner(player) }
         if self.count_occupied_spaces() == 9 { return GameStatus::Draw }
         GameStatus::Pending(self.player)
-    }
-
-    // Return the identity of the winner, if there is one
-    pub fn winner(&self) -> Option<Player> {
-        if let GameStatus::Winner(winner) = self.status() {
-            Some(winner)
-        } else {
-            None
-        }
     }
 }
 
@@ -271,7 +297,7 @@ impl Draw for Game {
 //--------------------------------------------------------------------------------------
 
 /// Iterator for a Game, used to iterate through game spaces
-pub struct GameIterator<'a> {
+pub(crate) struct GameIterator<'a> {
     game: &'a Game,
     row: usize,
     col: usize,
@@ -282,7 +308,8 @@ impl<'a> Iterator for GameIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.row > 2 { return None; }
-        let out = self.game.get_space(self.row, self.col);
+        let coord: Coordinate = (self.row, self.col).into();
+        let out = self.game.get_space(coord);
         if self.col == 2 { 
             self.row += 1;
             self.col = 0;
@@ -302,10 +329,14 @@ impl<'a> Iterator for GameIterator<'a> {
 mod tests {
     use super::*;
 
+    fn to_coord_vec(arr: &[(usize, usize)]) -> Vec<Coordinate> {
+        arr.iter().map(|x| Coordinate::from(*x)).collect()
+    }
+
     #[test]
     fn test_one() {
         // Detects a 'downhill-diagonal' win
-        let moves = [(0, 0), (2, 0), (1, 1), (2, 1), (2, 2)];
+        let moves: Vec<_> = to_coord_vec(&[(0, 0), (2, 0), (1, 1), (2, 1), (2, 2)]);
         let game = Game::from(&moves).expect("Failed to create game.");
         assert_eq!(game.status(), GameStatus::Winner(Player::X));
     }
@@ -313,7 +344,7 @@ mod tests {
     #[test]
     fn test_two() {
         // Detects an 'uphill-diagonal' win
-        let moves = [(0, 0), (1, 1), (0, 1), (0, 2), (1, 0), (2, 0)];
+        let moves = to_coord_vec(&[(0, 0), (1, 1), (0, 1), (0, 2), (1, 0), (2, 0)]);
         let game = Game::from(&moves).expect("Failed to create game.");
         assert_eq!(game.status(), GameStatus::Winner(Player::O));
     }
@@ -321,11 +352,11 @@ mod tests {
     #[test]
     fn test_three() {
         // Returns 'Draw' when there is no winner and no moves remaining
-        let moves = [
+        let moves = to_coord_vec(&[
             (0, 0), (1, 1), (2, 0),
             (1, 0), (1, 2), (2, 1),
             (0, 1), (0, 2), (2, 2)
-        ];
+        ]);
         let game = Game::from(&moves).expect("Failed to create game.");
         assert_eq!(game.status(), GameStatus::Draw);
     }
@@ -334,7 +365,7 @@ mod tests {
     fn test_four() {
         // Returns 'Pending' even if there are enough moves remaining to change 
         // the outcome later in the game
-        let moves = [(0, 0), (1, 1)];
+        let moves = to_coord_vec(&[(0, 0), (1, 1)]);
         let game = Game::from(&moves).expect("Failed to create game.");
         assert_eq!(game.status(), GameStatus::Pending(Player::X));
     }
@@ -343,7 +374,7 @@ mod tests {
     fn test_five() {
         // Returns 'Pending' even if there are NOT enough moves remaining to 
         // change the outcome later in the game
-        let moves = [(1, 1), (0, 0), (1, 2), (1, 0), (2, 0), (0, 2)];
+        let moves = to_coord_vec(&[(1, 1), (0, 0), (1, 2), (1, 0), (2, 0), (0, 2)]);
         let game = Game::from(&moves).expect("Failed to create game.");
         assert_eq!(game.status(), GameStatus::Pending(Player::X));
     }
@@ -351,7 +382,7 @@ mod tests {
     #[test]
     fn test_six() {
         // Detects a 'horizontal' win
-        let moves = [(1, 1), (0, 0), (1, 0), (0, 1), (1, 2)];
+        let moves = to_coord_vec(&[(1, 1), (0, 0), (1, 0), (0, 1), (1, 2)]);
         let game = Game::from(&moves).expect("Failed to create game.");
         assert_eq!(game.status(), GameStatus::Winner(Player::X));
     }
@@ -359,7 +390,7 @@ mod tests {
     #[test]
     fn test_seven() {
         // Detects a 'vertical' win
-        let moves = [(1, 1), (0, 2), (0, 0), (2, 2), (1, 0), (1, 2)];
+        let moves = to_coord_vec(&[(1, 1), (0, 2), (0, 0), (2, 2), (1, 0), (1, 2)]);
         let game = Game::from(&moves).expect("Failed to create game.");
         assert_eq!(game.status(), GameStatus::Winner(Player::O));
     }
@@ -367,7 +398,7 @@ mod tests {
     #[test]
     fn test_eight() {
         // Returns an error when attempting to add a duplicate move
-        let moves = [(2, 2), (2, 2)];
+        let moves = to_coord_vec(&[(2, 2), (2, 2)]);
         let game = Game::from(&moves).expect_err("Expected to receive an error");
         assert_eq!(game, GameError::SpaceOccupied)
     }

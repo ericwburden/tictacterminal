@@ -1,8 +1,7 @@
-
 mod cursor;
-pub mod display;
-pub mod error;
-pub mod game;
+mod display;
+mod error;
+mod game;
 
 use crate::cursor::{Cursor, Direction};
 use crate::display::Draw;
@@ -41,7 +40,7 @@ fn main() -> Result<()> {
                     KeyCode::Char('j') | KeyCode::Down  => gc.shift(Direction::Down),
                     KeyCode::Char('l') | KeyCode::Right => gc.shift(Direction::Right),
                     KeyCode::Enter => {
-                        if let Err(e) = game.add_move((gc.row, gc.col)) {
+                        if let Err(e) = game.add_move(gc.get_coordinate()) {
                             println!("{}, please try again!", e);
                         }
                         continue 'game;

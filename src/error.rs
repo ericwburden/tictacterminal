@@ -3,20 +3,18 @@
 
 /// A list specifying the categories of Game errors
 #[derive(Debug, PartialEq)]
-pub enum GameError {
+#[non_exhaustive]
+pub(crate) enum GameError {
     /// Tried to place a mark in a space already marked
     SpaceOccupied,
-    /// Tried to select a space outside the 1-9 range
-    InvalidSpace,
 }
 
-pub type Result<T> = std::result::Result<T, GameError>;
+pub(crate) type Result<T> = std::result::Result<T, GameError>;
 
 impl std::fmt::Display for GameError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let msg = match self {
             GameError::SpaceOccupied => "Cannot add a move to an already occupied space",
-            GameError::InvalidSpace => "Valid spaces are 0-8",
         };
         write!(f, "{}", msg)
     }
