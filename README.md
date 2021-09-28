@@ -22,3 +22,7 @@ for best viewing.
 3. Run the executable
 
 _Note: The MacOS executable is not signed or notarized. You *can* get it to run, but I'd recommend using `rustup` instead._
+
+## Play the Game
+
+It's Tic-Tac-Toe... Use the arrow keys (or h/j/k/l) to move the cursor, `Enter` to choose your space. `Esc` to exit the game. [Play with a friend](https://tmate.io/)!
