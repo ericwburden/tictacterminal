@@ -1,6 +1,6 @@
 [package]
 name = "tictacterminal"
-version = "2.0.4"
+version = "2.0.5"
 authors = ["Eric Burden <eric.w.burden@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -9,6 +9,7 @@ readme = "README.md"
 repository = "https://github.com/ericwburden/tictactoe"
 keywords = ["game", "demo"]
 categories = ["games", "command-line-utilities"]
+exclude = ["img/"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
