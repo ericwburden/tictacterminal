@@ -18,3 +18,5 @@ for best viewing.
 1. Identify the appropriate executable for your OS from the latest release
 2. Unzip (or Untar) it
 3. Run the executable
+
+_Note: The MacOS executable is not signed or notarized. You *can* get it to run, but I'd recommend using `rustup` instead._
