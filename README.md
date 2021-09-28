@@ -3,6 +3,8 @@
 It's tic-tac-toe, in the terminal! I'd recommend using a dark theme for your terminal
 for best viewing.
 
+![screenshot](https://github.com/ericwburden/tictacterminal/blob/main/img/thumbnail.png)
+
 ## Installation
 
 ### Using Cargo
